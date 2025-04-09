@@ -1,0 +1,48 @@
+- name: Set static IP and hostname using NetworkManager (nmcli)
+  hosts: my_hosts
+  become: true
+  vars_files:
+      - vars/hostconfig.yml
+      - network_setup_secrets.yml
+  tasks:
+      - name: Get new config for this host
+        set_fact:
+            new_hostname: "{{ host_config[inventory_hostname].new_hostname }}"
+            new_ip: "{{ host_config[inventory_hostname].new_ip }}"
+            current_ip: "{{ host_config[inventory_hostname].current_ip }}"
+
+      - name: Set hostname
+        hostname:
+            name: "{{ new_hostname }}"
+
+      - name: Ensure hostname is in /etc/hosts
+        lineinfile:
+            path: /etc/hosts
+            regexp: '^127\.0\.1\.1'
+            line: "127.0.1.1 {{ new_hostname }}"
+            state: present
+
+      - name: Get primary connection name
+        command: nmcli -t -f NAME,DEVICE connection show --active
+        register: nmcli_connections
+
+      - name: Parse primary connection name
+        set_fact:
+            primary_conn: "{{ nmcli_connections.stdout_lines[0].split(':')[0] }}"
+
+      - name: Set static IP using nmcli
+        command: >
+            nmcli connection modify "{{ primary_conn }}"
+            ipv4.addresses "{{ new_ip }}/24"
+            ipv4.gateway "{{ new_ip | regex_replace('\\.\\d+$', '.1') }}"
+            ipv4.method manual
+        notify: Restart network connection
+
+      - name: Reboot the system
+        reboot:
+            msg: "Rebooting to apply hostname and IP changes"
+            reboot_timeout: 0
+
+  handlers:
+      - name: Restart network connection
+        command: nmcli connection up "{{ primary_conn }}"

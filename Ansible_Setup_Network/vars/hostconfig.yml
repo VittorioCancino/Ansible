@@ -1,0 +1,16 @@
+host_config:
+    192.168.0.129:
+      current_hostname: Node01
+      current_ip: 192.168.0.129
+      new_hostname: PC100
+      new_ip: 192.168.0.50
+    192.168.0.128:
+      current_hostname: Node01
+      current_ip: 192.168.0.128
+      new_hostname: PC101
+      new_ip: 192.168.0.51
+    192.168.0.105:
+      current_hostname: Node01
+      current_ip: 192.168.0.105
+      new_hostname: PC102
+      new_ip: 192.168.0.52

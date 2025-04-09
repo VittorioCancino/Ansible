@@ -1,0 +1,35 @@
+# You will be conecting as the initial setup user to the machine but you will
+# desudo that user and sudo the new admin user with a new password
+---
+- name: Setup Admin User
+  hosts: all
+  become: yes
+  become_method: su
+  become_user: root
+  vars_files:
+      - initial_setup_secrets.yml
+  vars:
+      new_user_enc_password: "{{new_user_passwd | password_hash('sha512')}}"
+      ansible_user: lab
+  tasks:
+      - name: Create labadmin User for configurations
+        ansible.builtin.user:
+            name: "{{ new_user_name }}"
+            comment: Admin setup User
+            password: "{{  new_user_enc_password }}"
+            shell: /bin/bash
+            groups: sudo
+            append: yes
+            create_home: yes
+
+      - name: Setup the SSH key for new labadmin user
+        ansible.posix.authorized_key:
+            user: "{{ new_user_name }}"
+            state: present
+            key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+
+      - name: Remove lab from Sudo groups
+        ansible.builtin.user:
+            name: lab
+            groups: "lab"
+            append: no

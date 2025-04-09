@@ -1,0 +1,25 @@
+---
+- name: Add hosts to known_hosts
+  hosts: localhost
+  gather_facts: false
+  vars:
+      user: "lab"
+      target_group: my_hosts
+  tasks:
+      - name: Add host key only if not already present
+        ansible.builtin.shell: ssh-keyscan {{ item }} >> ~/.ssh/known_hosts
+        args:
+            executable: /bin/bash
+        when: lookup('pipe', 'ssh-keygen -F ' + item + ' || true') == ""
+        loop: "{{ groups[target_group] }}"
+
+- name: Setup SSH Keys for login
+  hosts: all
+  vars:
+      ansible_user: lab
+  tasks:
+      - name: Set SSH key for {{ ansible_user }}
+        ansible.posix.authorized_key:
+            user: "{{ ansible_user }}"
+            state: present
+            key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"

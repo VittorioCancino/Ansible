@@ -1,0 +1,46 @@
+---
+- name: Collect migration data from all hosts
+  hosts: all
+  gather_facts: true
+  become: false
+
+  vars:
+      ip_prefix: "192.168.0"
+      ip_start: 50
+      hostname_prefix: "PC"
+      hostname_start: 100
+
+  tasks:
+      - name: Collect host info
+        set_fact:
+            old_ip: "{{ ansible_default_ipv4.address }}"
+            old_hostname: "{{ ansible_hostname }}"
+
+      - name: Save structured migration info to local file (YAML-like)
+        delegate_to: localhost
+        run_once: true
+        copy:
+            content: |
+                host_config:
+                {% for host in ansible_play_hosts_all %}
+                  {{ '  ' }}{{ hostvars[host]['old_ip'] }}:
+                  {{ '    ' }}current_hostname: {{ hostvars[host]['old_hostname'] }}
+                  {{ '    ' }}current_ip: {{ hostvars[host]['old_ip'] }}
+                  {{ '    ' }}new_hostname: {{ hostname_prefix }}{{ hostname_start + loop.index0 }}
+                  {{ '    ' }}new_ip: {{ ip_prefix }}.{{ ip_start + loop.index0 }}
+                {% endfor %}
+            dest: "./vars/hostconfig.yml"
+
+      - name: Save new hosts to INI file
+        delegate_to: localhost
+        run_once: true
+        copy:
+            content: |
+                [my_hosts]
+                {% for host in ansible_play_hosts_all %}
+                {{ ip_prefix }}.{{ ip_start + loop.index0 }}
+                {% endfor %}
+
+                [my_hosts:vars]
+                ansible_user=labadmin
+            dest: "./vars/new_hosts.ini"

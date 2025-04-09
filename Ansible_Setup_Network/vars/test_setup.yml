@@ -1,0 +1,22 @@
+---
+- name: Add hosts to known_hosts
+  hosts: localhost
+  gather_facts: false
+  vars:
+      target_group: my_hosts
+  tasks:
+      - name: Add host key only if not already present
+        ansible.builtin.shell: ssh-keyscan {{ item }} >> ~/.ssh/known_hosts
+        args:
+            executable: /bin/bash
+        when: lookup('pipe', 'ssh-keygen -F ' + item + ' || true') == ""
+        loop: "{{ groups[target_group] }}"
+
+- name: Check Hostname and IP configurations
+  hosts: all
+  vars:
+      ansible_user: lab
+  tasks:
+      - name: new Hostnames and IPs
+        debug:
+            msg: "New Hostname {{ ansible_hostname }} New Ip {{ ansible_default_ipv4.address }}"
